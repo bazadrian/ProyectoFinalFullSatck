@@ -6,6 +6,6 @@ router.get('/', getMovies)
 router.post('/', crearMovies)
 
 router.put('/:id', updateMovies)
-router.delete('/', deleteMovies)
+router.delete('/:id', deleteMovies)
 
 module.exports = router
