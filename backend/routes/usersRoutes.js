@@ -1,11 +1,13 @@
 const express = require('express')
 const router = express.Router()
-const { register, login, data } = require ('../controllers/userControllers')
+const { login, register, data } = require('../controllers/usersControllers')
+const { protect } = require('../middleware/authMiddleware')
 
+//endpoints publicos
 router.post('/login', login)
 router.post('/register', register)
 
-router.get('/data', data)
-
+//endpoint privado
+router.get('/data', protect, data)
 
 module.exports = router
