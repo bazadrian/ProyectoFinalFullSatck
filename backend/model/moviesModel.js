@@ -13,12 +13,20 @@ const movieSchema = mongoose.Schema({
       overview: {
         type: String
       },
-      poster_path:{
+      poster_path: {
         type: String,
         required: true
-      }
-    }, {
-      timestamps: true
-    });
+      },
+      likesCount: { 
+        type: Number,
+        default: 0 },
+      likedBy: [{ 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'User' 
+      }]
+}, {
+  timestamps: true
+});
 
-module.exports = mongoose.model('Movie', movieSchema)
+const Movie = mongoose.model('Movie', movieSchema);
+module.exports = Movie;

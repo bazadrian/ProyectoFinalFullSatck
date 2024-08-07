@@ -6,7 +6,7 @@ const { protect } = require ('../middleware/authMiddleware')
 router.get('/', protect, getMovies)
 router.post('/', protect, crearMovies)
 
-router.put('/:id', protect, updateMovies)
+router.post('/:id/like', protect, updateMovies)
 router.delete('/:tmdbId', protect, deleteMovies)
 
 
@@ -21,23 +21,6 @@ router.get('/popular', async (req, res) => {
     }
   });
 // Pide la info de la pelicula por ID de TMDB
-  router.get('/movie/:id', protect, async (req, res) => {
-    const { id } = req.params;
-    try {
-      const movieId = await getOneMovieById(id);
-      console.log("Movie data:", movieId); // Muestra los datos obtenidos
-      if (movieId) {
-        res.status(200).json(movieId);
-      } else {
-        res.status(404).json({ message: 'Pelicula no encontrada'})
-      }
-    } catch (error) {
-      if (error.response && error.response.status === 404) {
-        res.status(404).json({ message: 'Película no encontrada en TMDB', error: error.message });
-      } else {
-        res.status(500).json({ message: 'Error al obtener una película', error: error.message });
-      }
-    }
-  })
+router.get('/movie/:id', protect, getOneMovieById);
 
 module.exports = router

@@ -37,27 +37,32 @@ const getPopularMovies = async (page = 1) => {
 }
 
 // Obtener 1 película por ID
-
-    const getOneMovieById = async (id) => {
-    console.log(`Fetching movie with ID: ${id}`);
-    const url = `https://api.themoviedb.org/3/movie/${id}`;
+// Controlador que combina datos de TMDB y verifica "likes" locales
+const getOneMovieById = asyncHandler(async (req, res) => {    
+    const tmdbId = req.params.id;
+    const tmdbUrl = `https://api.themoviedb.org/3/movie/${tmdbId}`;
     const headers = {
         accept: 'application/json',
         Authorization: `Bearer ${process.env.TMDB_API_KEY}`
-    }
+    };
+    
     try {
-        const response = await axios({
-            method: 'GET',
-            url: url,
-            headers: headers,
-        });
+        const tmdbResponse = await axios.get(tmdbUrl, { headers });
+        const movieDetails = tmdbResponse.data;
 
-        return response.data;
+        const localMovie = await Movies.findOne({ tmdb_id: tmdbId }).populate('likedBy', 'id');
+        const isLikedByUser = localMovie ? localMovie.likedBy.some(user => user.id === req.user._id.toString()) : false;
+
+        res.json({ ...movieDetails, isLikedByUser });
     } catch (error) {
-        console.error('Error fetching popular movies:', error);
-        throw error; // Rethrow the error to handle it according to your error handling policy
-    } 
-}
+        console.error('Error fetching movie data:', error);
+        if (error.response && error.response.status === 404) {
+            res.status(404).json({ message: 'Película no encontrada en TMDB' });
+        } else {
+            res.status(500).send({ message: 'Error al obtener los detalles de la película', error: error.toString() });
+        }
+    }
+});
 
 const getMovies = asyncHandler(async (req, res) => {
     // Buscar todos los favoritos del usuario actual
@@ -109,24 +114,31 @@ const crearMovies = asyncHandler(async (req, res) => {
 
 
 const updateMovies = asyncHandler(async (req, res) => {
-
-const movie = await Movies.findById(req.params.id)
-
+    const { id } = req.params;
+    console.log('Received ID:', id);
+    try {
+    const movie = await Movies.findOne({ tmdb_id: id }); 
     if (!movie) {
-        res.status(400)
-        throw new Error('Movie no encontrada')
+      res.status(404);
+      throw new Error('Película no encontrada');
+    }  
+    const alreadyLiked = movie.likedBy.includes(req.user._id);  
+    if (alreadyLiked) {
+      // Si el usuario ya ha dado "like", remueve el like
+      movie.likedBy.pull(req.user._id);
+      movie.likesCount -= 1;
     } else {
-
-        //verificar que la película que queremos modificar, pertenece al usuario logeado
-        if (movie.user.toString() !== req.user.id) {
-            res.status(401)
-            throw new Error('Usuario no autorizado')
-        } else {
-            const movieUpdated = await Movies.findByIdAndUpdate(req.params.id, req.body, { new: true })
-            res.status(200).json(movieUpdated)
-        }
+      // Si el usuario no ha dado "like", añade el like
+      movie.likedBy.push(req.user._id);
+      movie.likesCount += 1;
     }
-})
+  
+    await movie.save();
+    res.status(200).json(movie);
+} catch (error) {
+    res.status(400).json({ message: 'Invalid ID format', error });
+}
+  });
 
 const deleteMovies = asyncHandler(async (req, res) => {
     const { tmdbId } = req.params; // Asumiendo que pasas tmdb_id como parámetro
